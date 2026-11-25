@@ -6,8 +6,8 @@ export const metadata: Metadata = { title: "Privacy policy" };
 
 export default function Privacy() {
   return (
-    <LegalPage title="Privacy policy" updated="25 November 2026">
-      <p>{SITE.company} (&quot;Klyroo&quot;) is the controller of your personal data. This policy explains what we collect and why.</p>
+    <LegalPage title="Privacy policy" updated="26 November 2026">
+      <p>{SITE.company ? `${SITE.company} (“Klyroo”)` : "Klyroo"} is the controller of your personal data. This policy explains what we collect and why.</p>
       <h2>What we collect</h2>
       <ul>
         <li><strong>Account data:</strong> your email address, organisation name and team membership.</li>

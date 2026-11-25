@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
+import { PasswordField } from "./PasswordField";
 import { Logo } from "./Logo";
 
 const points = [
@@ -47,6 +48,11 @@ export function AuthShell({
 }
 
 export function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  if (props.type === "password") {
+    const { type, ...p } = props;
+    void type;
+    return <PasswordField {...p} />;
+  }
   const { label, id, ...rest } = props;
   const fid = id ?? props.name;
   return (

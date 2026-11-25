@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Refund policy" };
 
 export default function Refunds() {
   return (
-    <LegalPage title="Refund policy" updated="25 November 2026">
+    <LegalPage title="Refund policy" updated="26 November 2026">
       <h2>First purchase: {SITE.refundDays}-day refund</h2>
       <p>If Klyroo isn&apos;t right for you, email us within {SITE.refundDays} days of your first purchase and we&apos;ll refund it in full. We&apos;ll ask for your organisation name only.</p>
       <h2>After {SITE.refundDays} days</h2>

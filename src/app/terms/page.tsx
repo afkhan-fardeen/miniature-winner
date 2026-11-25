@@ -6,8 +6,8 @@ export const metadata: Metadata = { title: "Terms of service" };
 
 export default function Terms() {
   return (
-    <LegalPage title="Terms of service" updated="25 November 2026">
-      <p>These terms govern your use of Klyroo, provided by {SITE.company}, {SITE.companyAddress} (&quot;Klyroo&quot;, &quot;we&quot;). By creating an account you agree to them.</p>
+    <LegalPage title="Terms of service" updated="26 November 2026">
+      <p>These terms govern your use of Klyroo{SITE.company ? `, provided by ${SITE.company}${SITE.companyAddress ? `, ${SITE.companyAddress}` : ""}` : ""}. In these terms, “Klyroo”, “we” and “us” mean the provider of the service. By creating an account you agree to them.</p>
       <h2>1. The service</h2>
       <p>Klyroo monitors the technical readiness of websites for AI-powered discovery and provides alerts and reports. It measures technical conditions only. We do not measure, predict or guarantee AI recommendations, citations, rankings or traffic.</p>
       <h2>2. Accounts and brands</h2>

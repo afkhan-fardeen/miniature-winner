@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { PasswordField } from "@/components/PasswordField";
 import { SettingsProfileFields } from "@/components/SettingsProfileFields";
 import { supabaseServer } from "@/lib/supabase/server";
 import { changePassword, saveNotifications, saveProfile } from "./actions";
@@ -55,8 +56,8 @@ async function Content({ searchParams }: { searchParams: PageProps<"/app/setting
         <section id="password" className="card mt-6 scroll-mt-24" aria-labelledby="pw">
           <h2 id="pw" className="h3">Change password</h2>
           <form action={changePassword} className="mt-5 space-y-4">
-            <div><label htmlFor="cur" className="label">Current password</label><input id="cur" name="current" type="password" required autoComplete="current-password" className="input" /></div>
-            <div><label htmlFor="new" className="label">New password</label><input id="new" name="next" type="password" required minLength={8} autoComplete="new-password" className="input" /></div>
+            <PasswordField id="cur" name="current" label="Current password" required autoComplete="current-password" />
+            <PasswordField id="new" name="next" label="New password" required minLength={8} autoComplete="new-password" hint="At least 8 characters." />
             <button className="btn btn-outline btn-lg">Update password</button>
           </form>
         </section>
