@@ -25,6 +25,10 @@ export function productIdFor(mode: PriceMode, months: DurationMonths): string {
   return env(`POLAR_PRODUCT_${mode.toUpperCase()}_${months}M`);
 }
 
+export class PolarError extends Error {
+  constructor(public status: number, message: string) { super(message); }
+}
+
 async function polar(path: string, init: RequestInit & { json?: unknown } = {}) {
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
@@ -36,30 +40,34 @@ async function polar(path: string, init: RequestInit & { json?: unknown } = {}) 
     body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
   });
   if (!res.ok) {
-    throw new Error(`Polar ${init.method ?? "GET"} ${path} failed: ${res.status} ${await res.text()}`);
+    throw new PolarError(res.status, `Polar ${init.method ?? "GET"} ${path} failed: ${res.status} ${await res.text()}`);
   }
   return res.status === 204 ? null : res.json();
 }
 
 export const polarProvider: BillingProvider = {
   async createCheckout(req: CheckoutRequest): Promise<CheckoutResult> {
-    const data = await polar("/checkouts/", {
-      method: "POST",
-      json: {
-        products: [productIdFor(req.priceMode, req.durationMonths)],
-        seats: req.brands,
-        customer_email: req.customerEmail,
-        external_customer_id: req.organizationId,
-        success_url: req.successUrl,
-        metadata: {
-          organization_id: req.organizationId,
-          brands: String(req.brands),
-          duration_months: String(req.durationMonths),
-          price_mode: req.priceMode,
-        },
+    const body = {
+      products: [productIdFor(req.priceMode, req.durationMonths)],
+      seats: req.brands,
+      external_customer_id: req.organizationId,
+      success_url: req.successUrl,
+      metadata: {
+        organization_id: req.organizationId,
+        brands: String(req.brands),
+        duration_months: String(req.durationMonths),
+        price_mode: req.priceMode,
       },
-    });
-    return { checkoutId: data.id, url: data.url };
+    };
+    try {
+      const data = await polar("/checkouts/", { method: "POST", json: { ...body, customer_email: req.customerEmail } });
+      return { checkoutId: data.id, url: data.url };
+    } catch (e) {
+      // Polar rejects emails whose domain can't receive mail. Let the customer type it on Polar's page instead.
+      if (!(e instanceof PolarError) || e.status !== 422) throw e;
+      const data = await polar("/checkouts/", { method: "POST", json: body });
+      return { checkoutId: data.id, url: data.url };
+    }
   },
 
   async setBrandCount(id, brands, behavior) {

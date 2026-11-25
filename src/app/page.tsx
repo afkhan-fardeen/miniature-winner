@@ -122,7 +122,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <p className="mt-12 text-center text-sm text-ink-2">Screenshots show sample data.</p>
         </div>
       </section>
 
@@ -173,7 +172,7 @@ export default function Home() {
         <div className="container-x">
           <p className="eyebrow">Pricing</p>
           <h2 className="h2 mt-3 max-w-[640px]">One platform. All your brands.</h2>
-          <p className="lead mt-4 max-w-[620px]">One feature set. Pick how many brands and for how long. The longer the term, the less you pay each month.</p>
+          <p className="lead mt-4 max-w-[620px]">Each brand is one licence. Your first brand is free for 14 days, no card needed. After that, pick how many brands and for how long: the longer the term, the less you pay each month.</p>
           <div className="mt-10"><PricingCalculator mode={mode} /></div>
         </div>
       </section>
@@ -206,7 +205,7 @@ export default function Home() {
           <p className="mx-auto mt-4 max-w-[480px] text-ink/80">Run a free scan now, then let Klyroo watch your site every day.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/scan" className="btn btn-primary btn-lg"><ScanSearch size={18} aria-hidden /> Run a free scan</Link>
-            <Link href="/signup" className="btn btn-outline btn-lg border-ink">Create an account</Link>
+            <Link href="/signup" className="btn btn-outline btn-lg border-ink">Start free trial</Link>
           </div>
         </div>
       </section>

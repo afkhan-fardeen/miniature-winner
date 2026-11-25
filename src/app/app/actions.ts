@@ -86,11 +86,19 @@ export async function startCheckout(formData: FormData) {
   if (!isValidBrandCount(brands) || !isDuration(months)) redirect("/pricing");
   const { user } = await requireAdmin(orgId);
   const mode: PriceMode = process.env.PRICE_MODE === "standard" ? "standard" : "launch";
-  const { url } = await polarProvider.createCheckout({
-    organizationId: orgId, customerEmail: user.email!, brands, durationMonths: months,
-    priceMode: mode, successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/app?org=${orgId}&ok=${encodeURIComponent("Payment received. Your licences will appear shortly.")}`,
-  });
-  redirect(url);
+  const retry = (code: string): never => redirect(`/app/checkout?brands=${brands}&months=${months}&error=${code}`);
+
+  let url: string | null = null;
+  try {
+    ({ url } = await polarProvider.createCheckout({
+      organizationId: orgId, customerEmail: user.email!, brands, durationMonths: months, priceMode: mode,
+      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/app?org=${orgId}&ok=${encodeURIComponent("Payment received. Your licences will appear shortly.")}`,
+    }));
+  } catch (e) {
+    console.error("[checkout] failed to create Polar checkout:", e instanceof Error ? e.message : e);
+    retry("checkout_failed");
+  }
+  redirect(url!);
 }
 
 const SCAN_COOLDOWN_MS = 10 * 60 * 1000;
@@ -111,6 +119,9 @@ export async function runBrandScan(formData: FormData) {
   if (last && Date.now() - new Date(last.created_at).getTime() < SCAN_COOLDOWN_MS) {
     to("error", "A scan ran in the last 10 minutes. Try again shortly.");
   }
+
+  const { data: licensed } = await supabaseAdmin().rpc("brand_has_valid_licence", { brand: brandId });
+  if (!licensed) to("error", "This brand has no active licence. Add a licence to run scans.");
 
   const { runScan } = await import("@/lib/scan");
   const result = await runScan(brand!.website_url, brand!.domain);

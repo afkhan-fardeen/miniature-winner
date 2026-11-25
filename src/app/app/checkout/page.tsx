@@ -9,6 +9,8 @@ import { createOrganization, startCheckout } from "../actions";
 
 export const metadata: Metadata = { title: "Checkout" };
 
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
 async function Content({ searchParams }: { searchParams: PageProps<"/app/checkout">["searchParams"] }) {
   const sp = await searchParams;
   const brands = Number(Array.isArray(sp.brands) ? sp.brands[0] : sp.brands);
@@ -29,6 +31,9 @@ async function Content({ searchParams }: { searchParams: PageProps<"/app/checkou
       <main className="container-x max-w-[640px] py-12">
         <Link href="/pricing" className="text-sm text-ink-2 hover:text-ink">← Change plan</Link>
         <h1 className="mt-3 text-[32px] leading-9 tracking-[-0.02em]">Review your order</h1>
+        {one(sp.error) === "checkout_failed" && (
+          <p role="alert" className="alert-error mt-6">We couldn&apos;t start your payment. Nothing was charged. Please try again, and if it keeps happening contact support.</p>
+        )}
 
         <dl className="card mt-8 space-y-3 text-sm">
           <div className="flex justify-between"><dt>{q.brands} brand{q.brands > 1 ? "s" : ""} × {term} @ {formatGBP(q.pricePerBrand)}</dt><dd className="tabular-nums">{formatGBP(q.total)}</dd></div>

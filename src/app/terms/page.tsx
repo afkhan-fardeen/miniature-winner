@@ -14,6 +14,7 @@ export default function Terms() {
       <p>You must provide accurate information and keep your login secure. You may only add websites you own or are authorised to monitor, and you must verify ownership of each domain. The number of brands you monitor cannot exceed the licences you have purchased.</p>
       <h2>3. Subscriptions and payment</h2>
       <ul>
+        <li>Each account may start one free trial brand for 14 days. A website can only start one free trial.</li>
         <li>Prices are per brand, in GBP, for the term you choose (1, 3, 6 or 12 months) and are paid upfront.</li>
         <li>The price you paid and the price your renewal will charge are shown before checkout and recorded on your subscription.</li>
         <li>Subscriptions renew automatically at the disclosed renewal price unless you cancel before the renewal date.</li>

@@ -126,7 +126,7 @@ export function ScanResultView({ r, expand = false, showCta = true }: { r: ScanR
           Monitoring checks robots.txt, sitemaps and structured data daily, alerts you the moment something breaks, and sends weekly and monthly reports.
         </p>
         <Link href={`/signup?site=${encodeURIComponent(r.domain)}`} className="btn btn-accent btn-lg mt-6">
-          Monitor {r.domain} <ArrowRight size={18} aria-hidden />
+          Start free trial for {r.domain} <ArrowRight size={18} aria-hidden />
         </Link>
         </section>
       )}

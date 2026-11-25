@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Logo } from "./Logo";
 
 const points = [
-  "Crawler access, structured data and sitemaps checked automatically",
-  "Alerts the moment something critical breaks",
-  "Weekly and monthly reports with your readiness score",
+  "One free trial brand for 14 days, no card needed",
+  "Crawler access, structured data and sitemaps checked for you",
+  "Every issue comes with the fix",
 ];
 
 export function AuthShell({

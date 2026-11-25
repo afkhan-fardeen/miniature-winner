@@ -2,7 +2,7 @@ import { CheckCircle2, ChevronRight, Layers, Ticket } from "lucide-react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { VERIFY_TXT_PREFIX, verificationRecordName } from "@/lib/domain";
-import { addBrand, createOrganization, removeBrand, verifyBrand } from "@/app/app/actions";
+import { addBrand, removeBrand, verifyBrand } from "@/app/app/actions";
 
 export interface DashBrand {
   id: string; brand_name: string; website_url: string; domain: string;
@@ -18,17 +18,19 @@ export interface OrgDashboardProps {
   subs: DashSub[];
   error?: string; ok?: string; prefillSite?: string;
   linkBrands?: boolean;
+  trial?: { endsAt: string; daysLeft: number; expired: boolean } | null;
+  hasScan?: boolean;
 }
 
 const date = (s: string | null) => (s ? new Date(s).toLocaleDateString("en-GB", { dateStyle: "medium" }) : "n/a");
 
-export function OrgDashboard({ email, orgs, active, brands, total, used, free, subs, error, ok, prefillSite = "", linkBrands = true }: OrgDashboardProps) {
+export function OrgDashboard({ email, active, brands, total, used, free, subs, error, ok, prefillSite = "", linkBrands = true, trial = null, hasScan = false }: OrgDashboardProps) {
   const anyVerified = brands.some((b) => b.verification_status === "verified");
-  const steps = [
-    { done: !!active, label: "Create your organisation" },
-    { done: total > 0, label: "Choose a plan and buy brand licences", href: "/pricing" },
+  const steps: { done: boolean; label: string; href?: string }[] = [
+    { done: true, label: "Create your account" },
     { done: brands.length > 0, label: "Add your first brand" },
     { done: anyVerified, label: "Verify your domain with a DNS record" },
+    { done: hasScan, label: "Run your first scan" },
   ];
   const onboardingDone = steps.every((s) => s.done);
 
@@ -38,16 +40,9 @@ export function OrgDashboard({ email, orgs, active, brands, total, used, free, s
       <main className="container-x py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="eyebrow">Organisation</p>
-            <h1 className="mt-1 text-[32px] leading-9 tracking-[-0.02em]">{active ? active.name : "Welcome to Klyroo"}</h1>
+            <p className="eyebrow">{active?.name ?? "Your account"}</p>
+            <h1 className="mt-1 text-[32px] leading-9 tracking-[-0.02em]">Your brands</h1>
           </div>
-          {orgs.length > 1 && (
-            <nav aria-label="Organisations" className="flex flex-wrap gap-2">
-              {orgs.map((o) => (
-                <Link key={o.id} href={`/app?org=${o.id}`} className={`btn ${o.id === active?.id ? "btn-primary" : "btn-outline"}`}>{o.name}</Link>
-              ))}
-            </nav>
-          )}
         </div>
 
         <div className="mt-6 space-y-3" aria-live="polite">
@@ -55,20 +50,18 @@ export function OrgDashboard({ email, orgs, active, brands, total, used, free, s
           {ok && <p role="status" className="alert-ok">{ok}</p>}
         </div>
 
-        {!active && (
-          <form action={createOrganization} className="card mt-8 max-w-md space-y-4">
-            <h2 className="h3">Name your organisation</h2>
-            <p className="text-sm text-ink-2">This is your company or agency. You can add several brands to it.</p>
-            <div>
-              <label htmlFor="org-name" className="label">Organisation name</label>
-              <input id="org-name" name="name" required maxLength={120} className="input" />
-            </div>
-            <button className="btn btn-primary btn-lg">Create organisation</button>
-          </form>
-        )}
-
         {active && (
           <>
+            {trial && (
+              <section className={`mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl p-5 ${trial.expired ? "border border-line bg-surface" : "bg-acid"}`} aria-label="Free trial">
+                <div>
+                  <div className="text-lg">{trial.expired ? "Your free trial has ended" : `Free trial: ${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left`}</div>
+                  <p className="text-sm text-ink/70">{trial.expired ? "Monitoring is paused. Your brand and reports are safe." : `One brand is free until ${date(trial.endsAt)}. No card needed.`}</p>
+                </div>
+                {(trial.expired || trial.daysLeft <= 7) && <Link href="/pricing" className="btn btn-primary">Add a licence</Link>}
+              </section>
+            )}
+
             {!onboardingDone && (
               <section className="card-surface mt-8" aria-labelledby="start">
                 <h2 id="start" className="h3">Get started</h2>
@@ -84,7 +77,7 @@ export function OrgDashboard({ email, orgs, active, brands, total, used, free, s
             )}
 
             <section className="mt-8 grid gap-4 sm:grid-cols-3" aria-label="Licence usage">
-              <Stat label="Brand licences" value={total} Icon={Layers} />
+              <Stat label="Licences" value={total} Icon={Layers} />
               <Stat label="In use" value={used} Icon={CheckCircle2} />
               <Stat label="Remaining" value={free} Icon={Ticket} />
             </section>
@@ -92,7 +85,7 @@ export function OrgDashboard({ email, orgs, active, brands, total, used, free, s
             <section className="mt-12">
               <div className="flex items-center justify-between">
                 <h2 className="h3">Brands</h2>
-                <Link href="/pricing" className="btn btn-ghost text-sm">Buy more licences</Link>
+                <Link href="/pricing" className="btn btn-ghost text-sm">Add licences</Link>
               </div>
               <ul className="mt-4 divide-y divide-line rounded-xl border border-line">
                 {brands.length === 0 && <li className="p-6 text-sm text-ink-2">No brands yet. Add your first one below.</li>}
@@ -140,13 +133,13 @@ export function OrgDashboard({ email, orgs, active, brands, total, used, free, s
                 <div><label htmlFor="brand-site" className="label">Website</label><input id="brand-site" name="site" required defaultValue={prefillSite} placeholder="yourstore.com" className="input" /></div>
                 <button disabled={free < 1} className="btn btn-primary btn-lg">{free < 1 ? "No free licences" : "Add brand"}</button>
               </form>
-              {free < 1 && <p className="mt-2 text-sm text-ink-2"><Link href="/pricing" className="underline underline-offset-4">Buy a licence</Link> to add another brand.</p>}
+              {free < 1 && <p className="mt-2 text-sm text-ink-2"><Link href="/pricing" className="underline underline-offset-4">Add a licence</Link> to monitor another brand.</p>}
             </section>
 
             <section className="mt-12">
-              <h2 className="h3">Subscription</h2>
+              <h2 className="h3">Subscriptions</h2>
               <ul className="mt-4 divide-y divide-line rounded-xl border border-line text-sm">
-                {subs.length === 0 && <li className="p-5 text-ink-2">No subscription yet. <Link className="underline underline-offset-4" href="/pricing">See pricing</Link></li>}
+                {subs.length === 0 && <li className="p-5 text-ink-2">No paid licences yet. <Link className="underline underline-offset-4" href="/pricing">See pricing</Link></li>}
                 {subs.map((s) => (
                   <li key={s.id} className="flex flex-wrap justify-between gap-2 p-5">
                     <span>{s.quantity} brand{s.quantity > 1 ? "s" : ""} · {s.duration_months === 1 ? "monthly" : `${s.duration_months} months`} · <span className="chip">{s.status}</span></span>

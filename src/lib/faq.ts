@@ -2,6 +2,10 @@ import { SITE } from "./site";
 
 export const FAQ = [
   {
+    q: "How does the free trial work?",
+    a: "Every account gets one brand free for 14 days, with no card needed. When the trial ends, monitoring pauses and your brand and reports stay in your account. Add a licence and monitoring resumes straight away.",
+  },
+  {
     q: "Does Klyroo track where I rank in ChatGPT, Gemini or Perplexity?",
     a: "No. Klyroo checks whether your website is technically ready to be found and understood: crawler access, structured data, sitemaps, metadata and changes. It does not measure or guarantee AI recommendations, citations or rankings, and we never claim to.",
   },
@@ -19,7 +23,7 @@ export const FAQ = [
   },
   {
     q: "How does pricing work?",
-    a: "You pay per brand for the term you choose: 1, 3, 6 or 12 months, paid upfront on one invoice. Longer terms cost less per month. The price you pay and the price your renewal will charge are both shown before checkout.",
+    a: "Each brand is one licence. You pay per brand for the term you choose: 1, 3, 6 or 12 months, paid upfront on one invoice. Longer terms cost less per month. The price you pay and the price your renewal will charge are both shown before checkout.",
   },
   {
     q: "What happens when my term ends?",

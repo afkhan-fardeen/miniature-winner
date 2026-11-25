@@ -80,6 +80,50 @@ try {
   const me = (await a.auth.getUser()).data.user.id;
   const leave = await a.from("organization_members").delete().eq("organization_id", orgA).eq("user_id", me);
   check("last owner cannot be removed", !!leave.error);
+
+  // ---- Trial licence
+  const { data: orgB } = await b.rpc("create_organization", { org_name: "Org B" });
+  orgs.push(orgB);
+  const meB = (await b.auth.getUser()).data.user.id;
+  const g1 = await admin.rpc("grant_trial", { org: orgB, person: meB });
+  const g2 = await admin.rpc("grant_trial", { org: orgB, person: meB });
+  check("trial granted once", g1.data === true && g2.data === false, JSON.stringify([g1.data, g2.data, g1.error?.message]));
+  const t1 = await b.from("brands").insert({ organization_id: orgB, brand_name: "T1", website_url: "https://trial-one.example", domain: "trial-one.example" }).select("id").single();
+  check("trial licence allows one brand", !t1.error, t1.error?.message);
+  const t2 = await b.from("brands").insert({ organization_id: orgB, brand_name: "T2", website_url: "https://trial-two.example", domain: "trial-two.example" });
+  check("second brand blocked on trial", t2.error?.message.includes("no_free_licence"), t2.error?.message);
+
+  // Same website cannot start another trial from a different account
+  const { data: orgC } = await a.rpc("create_organization", { org_name: "Org C" });
+  orgs.push(orgC);
+  await admin.rpc("grant_trial", { org: orgC, person: me });
+  const dup = await a.from("brands").insert({ organization_id: orgC, brand_name: "Dup", website_url: "https://trial-one.example", domain: "trial-one.example" });
+  check("website cannot get a second free trial", dup.error?.message.includes("trial_domain_used"), dup.error?.message);
+
+  // Expired trial: new brands blocked, then a paid licence is auto-assigned to the unlicensed brand
+  await admin.from("brand_licenses").update({ expires_at: new Date(Date.now() - 864e5).toISOString() }).eq("granted_to", meB);
+  const { data: valid } = await admin.rpc("brand_has_valid_licence", { brand: t1.data.id });
+  check("expired trial is not a valid licence", valid === false, String(valid));
+  const { data: subB } = await admin.from("subscriptions").insert({
+    organization_id: orgB, duration_months: 1, quantity: 1, price_mode: "launch", price_per_brand: 3900, renewal_price_per_brand: 4900,
+    total_amount: 3900, status: "active", start_date: new Date().toISOString(), expiry_date: new Date(Date.now() + 30 * 864e5).toISOString(),
+  }).select("id").single();
+  await admin.from("brand_licenses").insert({ organization_id: orgB, subscription_id: subB.id });
+  const { data: assigned } = await admin.rpc("assign_free_licences", { org: orgB });
+  const { data: valid2 } = await admin.rpc("brand_has_valid_licence", { brand: t1.data.id });
+  check("paid licence auto-assigned to brand after trial", assigned === 1 && valid2 === true, JSON.stringify([assigned, valid2]));
+
+  // Profiles + notifications privacy
+  await admin.from("profiles").insert({ user_id: me, first_name: "A", last_name: "A", account_type: "personal" });
+  const prof = await b.from("profiles").select("user_id").eq("user_id", me);
+  check("other user cannot read profile", prof.data?.length === 0);
+  const forgedProfile = await a.from("profiles").insert({ user_id: me, first_name: "X", last_name: "Y", account_type: "personal" });
+  check("client cannot insert profile", !!forgedProfile.error);
+  await admin.from("notifications").insert({ user_id: me, kind: "t", title: "Hi" });
+  const notes = await b.from("notifications").select("id");
+  check("other user cannot read notifications", notes.data?.length === 0);
+  const forgedNote = await a.from("notifications").insert({ user_id: me, kind: "t", title: "forged" });
+  check("client cannot insert notifications", !!forgedNote.error);
 } catch (e) {
   console.log("ERROR", e.message ?? e); fails++;
 } finally {
