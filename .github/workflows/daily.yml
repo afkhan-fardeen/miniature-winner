@@ -1,0 +1,21 @@
+name: Daily reminders
+
+# Sends trial-ending, trial-ended and renewal reminder emails (each once).
+# Needs a repository secret named CRON_SECRET with the same value as in Vercel.
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the daily job
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET" || { echo "CRON_SECRET repository secret is not set"; exit 1; }
+          curl --fail --silent --show-error --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://useklyroo.com/api/cron/daily
