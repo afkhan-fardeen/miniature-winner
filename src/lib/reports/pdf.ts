@@ -39,7 +39,7 @@ export async function renderReportPdf(r: ReportData): Promise<Uint8Array> {
 
   // Header
   page.drawText("klyr", { x: M, y: y - 18, size: 20, font: bold, color: INK });
-  const lx = M + bold.widthOfTextAtSize("klyr", 20) + 5;
+  const lx = M + bold.widthOfTextAtSize("klyr", 20) + 3;
   page.drawCircle({ x: lx, y: y - 13, size: 5, borderWidth: 1.6, borderColor: INK, color: rgb(1, 1, 1) });
   page.drawCircle({ x: lx + 8, y: y - 13, size: 5, borderWidth: 1.6, borderColor: INK, color: ACID });
   y -= 36;

@@ -3,7 +3,7 @@ import { Logo } from "./Logo";
 import { SITE } from "@/lib/site";
 
 const cols = [
-  { title: "Product", links: [["Free scan", "/scan"], ["What we check", "/#checks"], ["How it works", "/#how-it-works"], ["Pricing", "/pricing"], ["FAQ", "/faq"], ["KlyrooBot", "/bot"]] },
+  { title: "Product", links: [["What we check", "/#checks"], ["How it works", "/#how-it-works"], ["Methodology", "/methodology"], ["Pricing", "/pricing"], ["FAQ", "/faq"], ["KlyrooBot", "/bot"]] },
   { title: "Company", links: [["Contact", "/contact"], ["Log in", "/login"], ["Sign up", "/signup"]] },
   { title: "Legal", links: [["Terms", "/terms"], ["Privacy", "/privacy"], ["Refunds", "/refunds"]] },
 ];

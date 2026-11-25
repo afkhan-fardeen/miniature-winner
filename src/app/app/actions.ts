@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { polarProvider } from "@/lib/billing/polar";
 import { VERIFY_TXT_PREFIX, parseSite, verificationRecordName } from "@/lib/domain";
+import { verifyViaMeta } from "@/lib/verify";
 import { isDuration, isValidBrandCount, type PriceMode } from "@/lib/pricing";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
 
@@ -38,16 +39,25 @@ export async function addBrand(formData: FormData) {
   const site = parseSite(String(formData.get("site") ?? ""));
   if (!name.success || !site) back(orgId, "error", "Enter a brand name and a public website address (no IPs or local addresses).");
   const { supabase } = await requireAdmin(orgId);
-  const { error } = await supabase.from("brands").insert({
+  const { data: created, error } = await supabase.from("brands").insert({
     organization_id: orgId, brand_name: name.data!, website_url: site!.url, domain: site!.domain,
-  });
+  }).select("id").single();
   if (error) {
     if (error.message.includes("no_free_licence")) back(orgId, "error", "No free brand licences. Buy another licence to add this brand.");
     if (error.code === "23505") back(orgId, "error", "That website is already added.");
     back(orgId, "error", "Could not add brand.");
   }
   revalidatePath("/app");
-  back(orgId, "ok", "Brand added. Verify the domain to start monitoring.");
+  // Show value straight away: one preview scan now. Daily monitoring, alerts and reports start once ownership is verified.
+  let scanned = false;
+  try {
+    const { recordScan } = await import("@/lib/monitor/process");
+    const out = await recordScan(supabaseAdmin(), { id: created!.id, organization_id: orgId, brand_name: name.data!, website_url: site!.url, domain: site!.domain }, "manual");
+    scanned = !out.result.fatal;
+  } catch (e) {
+    console.error("[brand] preview scan failed:", e instanceof Error ? e.message : e);
+  }
+  redirect(`/app/brands/${created!.id}?org=${orgId}&${scanned ? "ok" : "error"}=${encodeURIComponent(scanned ? "Your first report is ready. Verify your domain to turn on daily monitoring, alerts and reports." : "Brand added, but we couldn't scan the site just now. Check the address, then run a scan from here.")}`);
 }
 
 export async function removeBrand(formData: FormData) {
@@ -62,21 +72,26 @@ export async function removeBrand(formData: FormData) {
 export async function verifyBrand(formData: FormData) {
   const orgId = z.string().uuid().parse(formData.get("org"));
   const brandId = z.string().uuid().parse(formData.get("brand"));
+  const fromBrandPage = formData.get("from") === "brand";
   const { supabase } = await requireAdmin(orgId);
-  const { data: brand } = await supabase.from("brands").select("domain, verification_token")
+  const { data: brand } = await supabase.from("brands").select("domain, website_url, verification_token")
     .eq("id", brandId).eq("organization_id", orgId).maybeSingle();
   if (!brand) back(orgId, "error", "Brand not found.");
-  let records: string[][] = [];
+  const done = (key: "error" | "ok", msg: string): never =>
+    redirect(fromBrandPage ? `/app/brands/${brandId}?org=${orgId}&${key}=${encodeURIComponent(msg)}` : `/app?org=${orgId}&${key}=${encodeURIComponent(msg)}`);
+
+  // Either proof is enough: the DNS record, or the meta tag on the homepage.
+  let ok = false;
   try {
-    records = await resolveTxt(verificationRecordName(brand!.domain)); // DNS only: no HTTP, no SSRF surface
+    const records = await resolveTxt(verificationRecordName(brand!.domain)); // DNS only: no HTTP, no SSRF surface
+    ok = records.some((r) => r.join("") === VERIFY_TXT_PREFIX + brand!.verification_token);
   } catch { /* NXDOMAIN or timeout counts as not found */ }
-  const want = VERIFY_TXT_PREFIX + brand!.verification_token;
-  const found = records.some((r) => r.join("") === want);
-  if (!found) back(orgId, "error", "TXT record not found yet. DNS changes can take a few minutes.");
-  await supabaseAdmin().from("brands")
-    .update({ verification_status: "verified", verified_at: new Date().toISOString() }).eq("id", brandId);
+  if (!ok) ok = await verifyViaMeta(brand!.website_url, brand!.verification_token);
+  if (!ok) done("error", "We couldn't find the DNS record or the meta tag yet. DNS changes can take a few minutes; a theme change is usually instant. Check you saved it, then try again.");
+
+  await supabaseAdmin().from("brands").update({ verification_status: "verified", verified_at: new Date().toISOString() }).eq("id", brandId);
   revalidatePath("/app");
-  back(orgId, "ok", "Domain verified.");
+  done("ok", "Domain verified. Daily monitoring, alerts and reports are now on.");
 }
 
 export async function startCheckout(formData: FormData) {
@@ -112,7 +127,10 @@ export async function runBrandScan(formData: FormData) {
     .eq("id", brandId).eq("organization_id", orgId).maybeSingle();
   const to = (key: "error" | "ok", msg: string): never => redirect(`/app/brands/${brandId}?org=${orgId}&${key}=${encodeURIComponent(msg)}`);
   if (!brand) back(orgId, "error", "Brand not found.");
-  if (brand!.verification_status !== "verified") to("error", "Verify the domain before running a scan.");
+  if (brand!.verification_status !== "verified") {
+    const { count } = await supabase.from("brand_scans").select("id", { count: "exact", head: true }).eq("brand_id", brandId).not("score", "is", null);
+    if (count) to("error", "Verify your domain to run more scans and turn on daily monitoring.");
+  }
 
   const { data: last } = await supabase.from("brand_scans").select("created_at")
     .eq("brand_id", brandId).order("created_at", { ascending: false }).limit(1).maybeSingle();

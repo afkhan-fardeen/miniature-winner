@@ -7,7 +7,7 @@ import Link from "next/link";
 export function Lenses({ className = "", height = 14 }: { className?: string; height?: number }) {
   return (
     <svg
-      viewBox="0 0 30 16" height={height} width={(height * 30) / 16}
+      viewBox="2.6 0 24.8 16" height={height} width={(height * 24.8) / 16}
       fill="none" aria-hidden="true" className={className}
     >
       <circle cx="19.5" cy="8" r="6.6" fill="#E4F222" stroke="#0C0A08" strokeWidth="2.2" />

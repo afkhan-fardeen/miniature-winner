@@ -29,3 +29,9 @@ export const VERIFY_TXT_PREFIX = "klyroo-verify=";
 export function verificationRecordName(domain: string): string {
   return `_klyroo.${domain}`;
 }
+
+/** Alternative to the DNS record: a meta tag in the homepage <head> (easy to add on Shopify and WooCommerce). */
+export const VERIFY_META_NAME = "klyroo-site-verification";
+export function verificationMetaTag(token: string): string {
+  return `<meta name="${VERIFY_META_NAME}" content="${token}">`;
+}

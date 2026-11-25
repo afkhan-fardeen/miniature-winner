@@ -1,8 +1,8 @@
 import { CheckCircle2, ChevronRight, Layers, Ticket } from "lucide-react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
-import { VERIFY_TXT_PREFIX, verificationRecordName } from "@/lib/domain";
-import { addBrand, removeBrand, verifyBrand } from "@/app/app/actions";
+import { VerifyPanel } from "@/components/VerifyPanel";
+import { addBrand, removeBrand } from "@/app/app/actions";
 
 export interface DashBrand {
   id: string; brand_name: string; website_url: string; domain: string;
@@ -29,7 +29,7 @@ export function OrgDashboard({ email, active, brands, total, used, free, subs, e
   const steps: { done: boolean; label: string; href?: string }[] = [
     { done: true, label: "Create your account" },
     { done: brands.length > 0, label: "Add your first brand" },
-    { done: anyVerified, label: "Verify your domain with a DNS record" },
+    { done: anyVerified, label: "Verify you own it (meta tag or DNS)" },
     { done: hasScan, label: "Run your first scan" },
   ];
   const onboardingDone = steps.every((s) => s.done);
@@ -102,7 +102,7 @@ export function OrgDashboard({ email, active, brands, total, used, free, subs, e
                         <span className={`chip ${b.verification_status === "verified" ? "chip-ok" : "chip-warn"}`}>
                           {b.verification_status === "verified" ? "Verified" : "Not verified"}
                         </span>
-                        {linkBrands && b.verification_status === "verified" && (
+                        {linkBrands && (
                           <Link href={`/app/brands/${b.id}`} className="btn btn-outline">Report <ChevronRight size={16} aria-hidden /></Link>
                         )}
                         <form action={removeBrand}>
@@ -112,17 +112,7 @@ export function OrgDashboard({ email, active, brands, total, used, free, subs, e
                       </div>
                     </div>
                     {b.verification_status !== "verified" && (
-                      <div className="card-surface text-sm">
-                        <p>Add this DNS TXT record at your domain provider, then check it. DNS changes can take a few minutes.</p>
-                        <dl className="mt-3 grid gap-2 sm:grid-cols-[80px_1fr]">
-                          <dt className="text-ink-2">Name</dt><dd className="break-all font-mono text-xs">{verificationRecordName(b.domain)}</dd>
-                          <dt className="text-ink-2">Value</dt><dd className="break-all font-mono text-xs">{VERIFY_TXT_PREFIX}{b.verification_token}</dd>
-                        </dl>
-                        <form action={verifyBrand} className="mt-4">
-                          <input type="hidden" name="org" value={active.id} /><input type="hidden" name="brand" value={b.id} />
-                          <button className="btn btn-outline">Check record</button>
-                        </form>
-                      </div>
+                      <VerifyPanel orgId={active.id} brandId={b.id} domain={b.domain} token={b.verification_token} from="dashboard" />
                     )}
                   </li>
                 ))}

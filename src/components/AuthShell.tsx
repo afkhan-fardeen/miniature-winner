@@ -1,10 +1,11 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { PasswordField } from "./PasswordField";
+import { SITE } from "@/lib/site";
 import { Logo } from "./Logo";
 
 const points = [
-  "One free trial brand for 14 days, no card needed",
+  `One free trial brand for ${SITE.trialDays} days, no card needed`,
   "Crawler access, structured data and sitemaps checked for you",
   "Every issue comes with the fix",
 ];

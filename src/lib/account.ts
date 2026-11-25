@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { randomBytes } from "node:crypto";
 import { sendEmail, type Email } from "@/lib/email/send";
 import { welcome, type Rendered } from "@/lib/email/templates";
 import { appUrl } from "@/lib/app-url";
+import { SITE } from "@/lib/site";
 
 /** Server-only helpers. Every function here expects the service-role client. */
 type Admin = SupabaseClient;
@@ -44,7 +46,7 @@ export async function emailOnce(admin: Admin, person: Person, kind: string, ref:
   return res.ok;
 }
 
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = SITE.trialDays;
 
 /**
  * Idempotent. Run after a person confirms their email: makes sure they have an organisation and
@@ -75,6 +77,15 @@ export async function ensureAccountSetup(admin: Admin, userId: string): Promise<
   return { orgId, ready: true };
 }
 
-export function confirmUrl(tokenHash: string, type: "signup" | "magiclink" | "recovery", next = "/app") {
-  return `${appUrl()}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=${type}&next=${encodeURIComponent(next)}`;
+const LINK_LIFETIME_MS = { signup: 24 * 3600e3, magiclink: 24 * 3600e3, recovery: 3600e3 } as const;
+
+/**
+ * Stores the Supabase token behind a short random code and returns the link to put in the email.
+ * The token itself never appears in a URL, a mail client preview or a browser history.
+ */
+export async function createAuthLink(admin: Admin, tokenHash: string, type: "signup" | "magiclink" | "recovery", next = "/app"): Promise<string> {
+  const code = randomBytes(12).toString("base64url"); // 96 bits
+  const { error } = await admin.from("auth_links").insert({ code, token_hash: tokenHash, type, next, expires_at: new Date(Date.now() + LINK_LIFETIME_MS[type]).toISOString() });
+  if (error) throw new Error(`auth link: ${error.message}`);
+  return `${appUrl()}/c/${code}`;
 }

@@ -6,12 +6,13 @@ export const SITE = {
   company: "", // legal entity name, e.g. "Example Ltd"
   companyAddress: "", // registered address
   refundDays: 14,
+  trialDays: 3,
 };
 
 export const NAV = [
-  { href: "/#checks", label: "What we check" },
   { href: "/#product", label: "Product" },
   { href: "/#how-it-works", label: "How it works" },
+  { href: "/methodology", label: "Methodology" },
   { href: "/pricing", label: "Pricing" },
   { href: "/faq", label: "FAQ" },
 ];

@@ -120,8 +120,14 @@ export async function runScan(site: string, domain: string): Promise<ScanResult>
   }
 
   /* ---------------- homepage ---------------- */
+  const botAllowed = (path: string) => (robots ? isAllowed(robots, "KlyrooBot", path || "/") : true);
+  if (!botAllowed(new URL(home.finalUrl).pathname)) {
+    return {
+      site, domain, scannedAt: new Date().toISOString(), durationMs: Date.now() - t0, pagesFetched: pages, checks, categories: [], score: null, coverage: 0,
+      fatal: "Your robots.txt asks KlyrooBot not to read this page, and we respect that. Allow KlyrooBot (see /bot) and scan again.",
+    };
+  }
   const $ = cheerio.load(home.body);
-  const homeBlocked = robots ? !isAllowed(robots, "KlyrooBot", new URL(home.finalUrl).pathname || "/") : false;
   const finalHttps = home.finalUrl.startsWith("https://");
   add({ id: "https", category: "technical", title: "HTTPS", status: finalHttps ? "pass" : "fail", severity: finalHttps ? "info" : "critical", detail: finalHttps ? "Site is served over HTTPS." : "The site is served over plain HTTP.", recommendation: finalHttps ? undefined : "Serve every page over HTTPS and redirect HTTP to it." });
   add({ id: "redirects", category: "technical", title: "Redirects to homepage", status: home.redirects.length <= 2 ? "pass" : "warn", severity: home.redirects.length <= 2 ? "info" : "warning", detail: home.redirects.length === 0 ? "No redirects." : `${home.redirects.length} redirect(s) before the page loads.`, recommendation: home.redirects.length > 2 ? "Shorten the redirect chain to one hop." : undefined });
@@ -154,7 +160,6 @@ export async function runScan(site: string, domain: string): Promise<ScanResult>
   const links = new Set<string>();
   $("a[href]").each((_, el) => { try { const u = new URL($(el).attr("href")!, home.finalUrl); if (u.hostname.replace(/^www\./, "") === domain) links.add(u.pathname); } catch { /* ignore */ } });
   add({ id: "internal-links", category: "content", title: "Internal links", status: links.size >= 10 ? "pass" : "warn", severity: links.size >= 10 ? "info" : "warning", detail: `${links.size} unique internal link(s) on the homepage.` });
-  if (homeBlocked) add({ id: "scanner-blocked", category: "technical", title: "Scanner access", status: "info", severity: "info", detail: "robots.txt asks KlyrooBot not to crawl the homepage; we only read it once for this scan." });
 
   /* ---------------- structured data (homepage) ---------------- */
   const homeLd = flattenLd($('script[type="application/ld+json"]').map((_, e) => $(e).text()).get());
@@ -207,7 +212,9 @@ export async function runScan(site: string, domain: string): Promise<ScanResult>
   /* ---------------- a product page ---------------- */
   const homeProductLink = [...links].find((p) => /\/products?\//.test(p));
   const productUrl = sitemapUrls.find((u) => /\/products?\//.test(u)) ?? (homeProductLink ? `${origin}${homeProductLink}` : undefined);
-  if (!productUrl) {
+  if (productUrl && !botAllowed(new URL(productUrl).pathname)) {
+    add({ id: "product-schema", category: "structured", title: "Product schema", status: "unavailable", severity: "info", detail: "Your robots.txt asks KlyrooBot not to read product pages, so we skipped them.", url: productUrl });
+  } else if (!productUrl) {
     for (const id of ["product-schema"]) add({ id, category: "structured", title: "Product schema", status: "unavailable", severity: "info", detail: "We couldn't find a product page to test." });
   } else {
     const pr = await safeFetch(productUrl, { accept: "text/html" });

@@ -3,7 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { confirmUrl, emailOnce, ensureAccountSetup, getPerson, notify } from "@/lib/account";
+import { createAuthLink, emailOnce, ensureAccountSetup, getPerson, notify } from "@/lib/account";
 import { sendEmail } from "@/lib/email/send";
 import { confirmEmail, passwordChanged, resetPassword } from "@/lib/email/templates";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
@@ -47,7 +47,7 @@ export async function signup(formData: FormData) {
     company_name: v.accountType === "work" ? v.companyName : null,
   });
 
-  const mail = confirmEmail({ firstName: v.firstName, url: confirmUrl(data.properties.hashed_token, "signup", next) });
+  const mail = confirmEmail({ firstName: v.firstName, url: await createAuthLink(admin, data.properties.hashed_token, "signup", next) });
   const sent = await sendEmail({ to: v.email, ...mail, tags: [{ name: "kind", value: "confirm" }] });
   if (!sent.ok) redirect(`/signup/check-email?email=${enc(v.email)}&problem=1`);
   redirect(`/signup/check-email?email=${enc(v.email)}`);
@@ -61,7 +61,8 @@ export async function resendConfirmation(formData: FormData) {
   if (data?.user && !data.user.email_confirmed_at && data.properties?.hashed_token) {
     const person = await getPerson(admin, data.user.id);
     if (person) {
-      await emailOnce(admin, person, "confirm_resend", bucket(2), () => confirmEmail({ firstName: person.firstName, url: confirmUrl(data.properties.hashed_token, "magiclink") }));
+      const url = await createAuthLink(admin, data.properties.hashed_token, "magiclink");
+      await emailOnce(admin, person, "confirm_resend", bucket(2), () => confirmEmail({ firstName: person.firstName, url }));
     }
   }
   // Same answer whether or not the address has an unconfirmed account.
@@ -92,19 +93,24 @@ export async function logout() {
 
 /* ----------------------------------------------- email links (confirm/reset) */
 
-/** The emailed link opens a page with a button, so mail scanners that pre-open links can't use up the token. */
-export async function confirmToken(formData: FormData) {
-  const parsed = z.object({ token_hash: z.string().min(10).max(500), type: z.enum(["signup", "magiclink", "recovery"]) }).safeParse(Object.fromEntries(formData));
-  const next = safeNext(formData.get("next"));
-  if (!parsed.success) redirect("/login?error=" + enc("That link is invalid or has expired."));
+/**
+ * The emailed link (/c/<code>) opens a page with a button, so mail scanners that pre-open links can't use it up.
+ * The code is single-use and short-lived; the Supabase token behind it never leaves the server.
+ */
+export async function confirmCode(formData: FormData) {
+  const code = z.string().regex(/^[A-Za-z0-9_-]{16}$/).safeParse(formData.get("code"));
+  if (!code.success) redirect("/login?error=" + enc("That link is invalid or has expired."));
+  const admin = supabaseAdmin();
+  // Claim the code atomically: only one request can ever get it.
+  const { data: link } = await admin.from("auth_links").update({ used_at: new Date().toISOString() })
+    .eq("code", code.data).is("used_at", null).gt("expires_at", new Date().toISOString()).select("token_hash, type, next").maybeSingle();
+  if (!link) redirect(`/login?error=${enc("That link is invalid, has expired, or was already used. Request a new one.")}`);
   const supabase = await supabaseServer();
-  const { data, error } = await supabase.auth.verifyOtp({ type: parsed.data.type, token_hash: parsed.data.token_hash });
-  if (error || !data.user) {
-    redirect(`/login?error=${enc("That link is invalid or has expired. Request a new one.")}`);
-  }
-  if (parsed.data.type === "recovery") redirect("/reset-password");
-  await ensureAccountSetup(supabaseAdmin(), data.user.id);
-  redirect(next === "/app" ? "/app?welcome=1" : next);
+  const { data, error } = await supabase.auth.verifyOtp({ type: link.type as "signup" | "magiclink" | "recovery", token_hash: link.token_hash });
+  if (error || !data.user) redirect(`/login?error=${enc("That link has expired. Request a new one.")}`);
+  if (link.type === "recovery") redirect("/reset-password");
+  await ensureAccountSetup(admin, data.user.id);
+  redirect(safeNext(link.next) === "/app" ? "/app?welcome=1" : safeNext(link.next));
 }
 
 export async function requestPasswordReset(formData: FormData) {
@@ -114,7 +120,10 @@ export async function requestPasswordReset(formData: FormData) {
   const { data } = await admin.auth.admin.generateLink({ type: "recovery", email: email.data });
   if (data?.user && data.properties?.hashed_token) {
     const person = await getPerson(admin, data.user.id);
-    if (person) await emailOnce(admin, person, "password_reset", bucket(2), () => resetPassword({ firstName: person.firstName, url: confirmUrl(data.properties.hashed_token, "recovery", "/reset-password") }));
+    if (person) {
+      const url = await createAuthLink(admin, data.properties.hashed_token, "recovery", "/reset-password");
+      await emailOnce(admin, person, "password_reset", bucket(2), () => resetPassword({ firstName: person.firstName, url }));
+    }
   }
   // Same message whether or not the account exists, so addresses can't be probed.
   redirect(`/forgot-password?message=${enc("If an account exists for that email, a reset link is on its way. It expires in 1 hour.")}`);

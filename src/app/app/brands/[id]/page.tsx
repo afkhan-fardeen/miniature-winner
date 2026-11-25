@@ -19,7 +19,7 @@ async function Content({ params, searchParams }: { params: PageProps<"/app/brand
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login");
 
-  const { data: brand } = await supabase.from("brands").select("id, organization_id, brand_name, domain, verification_status").eq("id", id).maybeSingle();
+  const { data: brand } = await supabase.from("brands").select("id, organization_id, brand_name, domain, verification_status, verification_token").eq("id", id).maybeSingle();
   if (!brand) notFound();
   const { data: scans } = await supabase.from("brand_scans").select("result, score, created_at, source").eq("brand_id", id).order("created_at", { ascending: false }).limit(8);
   const latest = scans?.[0]?.result as ScanResult | undefined;
@@ -32,7 +32,7 @@ async function Content({ params, searchParams }: { params: PageProps<"/app/brand
   return (
     <BrandWorkspaceView
       email={auth.user.email} orgId={brand.organization_id}
-      brand={{ id: brand.id, name: brand.brand_name, domain: brand.domain, verified: brand.verification_status === "verified" }}
+      brand={{ id: brand.id, name: brand.brand_name, domain: brand.domain, verified: brand.verification_status === "verified", token: brand.verification_token }}
       scan={okScans[0] ? (okScans[0].result as ScanResult) : (latest ?? null)} history={history} error={one(sp.error)} ok={one(sp.ok)}
       open={open} resolved={resolved} changes={changes}
       lastScan={scans?.[0] ? { at: scans[0].created_at, source: scans[0].source as "manual" | "scheduled" } : undefined}

@@ -20,7 +20,7 @@ function layout(opts: { preheader: string; title: string; bodyHtml: string; foot
 <span style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(opts.preheader)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border:1px solid ${LINE};border-radius:16px">
-<tr><td style="padding:28px 32px 0"><span style="font:400 26px/1 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;letter-spacing:-0.05em;color:${INK}">klyr</span><span style="display:inline-block;vertical-align:baseline;width:11px;height:11px;border:2px solid ${INK};border-radius:50%;margin-left:3px"></span><span style="display:inline-block;vertical-align:baseline;width:11px;height:11px;border:2px solid ${INK};background:${ACID};border-radius:50%;margin-left:-4px"></span></td></tr>
+<tr><td style="padding:28px 32px 0"><span style="font:400 26px/1 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;letter-spacing:-0.05em;color:${INK}">klyr</span><span style="display:inline-block;vertical-align:baseline;width:11px;height:11px;border:2px solid ${INK};border-radius:50%;margin-left:1px"></span><span style="display:inline-block;vertical-align:baseline;width:11px;height:11px;border:2px solid ${INK};background:${ACID};border-radius:50%;margin-left:-4px"></span></td></tr>
 <tr><td style="padding:24px 32px 32px;font:400 16px/1.55 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:${INK}">
 <h1 style="margin:0 0 16px;font:400 26px/1.15 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;letter-spacing:-0.02em">${esc(opts.title)}</h1>
 ${opts.bodyHtml}
@@ -41,10 +41,10 @@ export function confirmEmail(a: { firstName: string; url: string }): Rendered {
     html: layout({
       preheader: "One click to confirm your email and start your free trial.",
       title: `Welcome, ${a.firstName}`,
-      bodyHtml: p("Confirm your email address to finish creating your Klyroo account. You'll get one free trial brand, no card needed.") + button(a.url, "Confirm email") + muted("This link works once and expires in 24 hours.") + link(a.url) + muted("If you didn't sign up, you can ignore this email."),
+      bodyHtml: p("Confirm your email address to finish creating your Klyroo account. You'll get one free trial brand, no card needed.") + button(a.url, "Confirm email") + muted("This link works once and expires soon. If it has, you can request a new one.") + link(a.url) + muted("If you didn't sign up, you can ignore this email."),
       footerNote: "You're receiving this because someone used this address to sign up to Klyroo.",
     }),
-    text: `Welcome, ${a.firstName}\n\nConfirm your email to finish creating your Klyroo account and start your free trial:\n${a.url}\n\nThis link works once and expires in 24 hours. If you didn't sign up, ignore this email.`,
+    text: `Welcome, ${a.firstName}\n\nConfirm your email to finish creating your Klyroo account and start your free trial:\n${a.url}\n\nThis link works once and expires soon. If you didn't sign up, ignore this email.`,
   };
 }
 
@@ -81,28 +81,36 @@ export function passwordChanged(a: { firstName: string; when: Date }): Rendered 
 export function welcome(a: { firstName: string; trialEndsAt: Date }): Rendered {
   const url = `${appUrl()}/app`;
   return {
-    subject: "Your free trial is ready",
+    subject: "Your free trial has started",
     html: layout({
-      preheader: "Add your first brand and run a scan.",
+      preheader: "Add your store and get your first report in minutes.",
       title: `You're in, ${a.firstName}`,
-      bodyHtml: p(`Your account is ready and you have <strong>one free trial brand</strong> until <strong>${fmtDate(a.trialEndsAt)}</strong>. No card needed.`) +
-        `<ol style="margin:0 0 14px;padding-left:20px"><li style="margin-bottom:6px">Add your store's website</li><li style="margin-bottom:6px">Verify it with a DNS record</li><li>Run your first scan and see what to fix</li></ol>` + button(url, "Add your first brand"),
+      bodyHtml: p(`You have <strong>one free trial brand</strong> until <strong>${fmtDate(a.trialEndsAt)}</strong>. No card needed.`) +
+        `<ol style="margin:0 0 14px;padding-left:20px"><li style="margin-bottom:6px"><strong>Add your store.</strong> Your first report is ready within minutes.</li><li style="margin-bottom:6px"><strong>Verify you own it</strong> with a meta tag or a DNS record. This turns on daily monitoring, alerts and reports.</li><li><strong>Fix what we find.</strong> Every issue comes with the fix.</li></ol>` + button(url, "Add your store"),
     }),
-    text: `You're in, ${a.firstName}.\n\nYour account is ready and you have one free trial brand until ${fmtDate(a.trialEndsAt)}. No card needed.\n\n1. Add your store's website\n2. Verify it with a DNS record\n3. Run your first scan\n\n${url}`,
+    text: `You're in, ${a.firstName}.\n\nYou have one free trial brand until ${fmtDate(a.trialEndsAt)}. No card needed.\n\n1. Add your store: your first report is ready within minutes.\n2. Verify you own it with a meta tag or a DNS record to turn on daily monitoring, alerts and reports.\n3. Fix what we find. Every issue comes with the fix.\n\n${url}`,
   };
 }
 
-export function trialEnding(a: { firstName: string; daysLeft: number; endsAt: Date }): Rendered {
+export interface TrialSummary { brandName: string; domain: string; score: number | null; critical: number; warnings: number }
+
+export function trialEnding(a: { firstName: string; endsAt: Date; hoursLeft: number; summary?: TrialSummary }): Rendered {
   const url = `${appUrl()}/pricing`;
-  const when = a.daysLeft <= 1 ? "tomorrow" : `in ${a.daysLeft} days`;
+  const when = a.hoursLeft <= 18 ? "today" : "tomorrow";
+  const sm = a.summary;
+  const found = sm && sm.score !== null
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;border:1px solid ${LINE};border-radius:8px"><tr><td style="padding:16px"><div style="font-size:13px;color:${MUTED}">What we found on ${esc(sm.domain)}</div><div style="margin:6px 0;font-size:34px;letter-spacing:-0.02em">${sm.score}<span style="font-size:14px;color:${MUTED}"> / 100</span></div><div style="font-size:14px">${sm.critical} critical · ${sm.warnings} other issue${sm.warnings === 1 ? "" : "s"} still open</div></td></tr></table>`
+    : "";
+  const foundText = sm && sm.score !== null ? `\nWhat we found on ${sm.domain}: ${sm.score}/100, ${sm.critical} critical, ${sm.warnings} other open issues.\n` : "";
   return {
     subject: `Your free trial ends ${when}`,
     html: layout({
-      preheader: "Keep monitoring your brand with a licence.",
+      preheader: sm && sm.score !== null ? `${sm.domain} scored ${sm.score}/100. Keep monitoring it.` : "Keep monitoring your brand with a licence.",
       title: `Your trial ends ${when}`,
-      bodyHtml: p(`Hi ${esc(a.firstName)}, your free trial brand stops being monitored on <strong>${fmtDate(a.endsAt)}</strong>. Your brand and its reports stay in your account.`) + p("To keep monitoring, add a brand licence.") + button(url, "See pricing"),
+      bodyHtml: p(`Hi ${esc(a.firstName)}, your free trial brand stops being monitored on <strong>${fmtDate(a.endsAt)}</strong>. Your brand and its reports stay in your account.`) + found +
+        p("Keep going and Klyroo keeps scanning every day, emails you the moment something critical breaks, and sends weekly and monthly reports.") + button(url, "Keep monitoring"),
     }),
-    text: `Hi ${a.firstName}, your free trial brand stops being monitored on ${fmtDate(a.endsAt)}. Your brand and reports stay in your account.\n\nTo keep monitoring, add a brand licence: ${url}`,
+    text: `Hi ${a.firstName}, your free trial brand stops being monitored on ${fmtDate(a.endsAt)}. Your brand and reports stay in your account.\n${foundText}\nKeep monitoring: ${url}`,
   };
 }
 

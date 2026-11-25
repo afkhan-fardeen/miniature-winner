@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AuthShell } from "@/components/AuthShell";
 import { SignupFields } from "@/components/SignupFields";
+import { SITE } from "@/lib/site";
 import { signup } from "../actions";
 
 export const metadata: Metadata = { title: "Start your free trial" };
@@ -15,7 +16,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/signup">["s
   return (
     <AuthShell
       title="Start your free trial"
-      subtitle="One brand free for 14 days. No card needed."
+      subtitle={`One brand free for ${SITE.trialDays} days. No card needed.`}
       error={one(sp.error)}
       footer={{ text: "Already have an account?", href: "/login", cta: "Log in" }}
     >

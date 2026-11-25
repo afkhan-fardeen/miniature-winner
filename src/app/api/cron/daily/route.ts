@@ -1,5 +1,5 @@
 import { emailOnce, getPerson, notify } from "@/lib/account";
-import { renewalReminder, trialEnding, trialExpired } from "@/lib/email/templates";
+import { renewalReminder, trialEnding, trialExpired, type TrialSummary } from "@/lib/email/templates";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
@@ -15,17 +15,18 @@ export async function GET(req: Request) {
   const iso = (ms: number) => new Date(ms).toISOString();
   const out = { trialEnding: 0, trialExpired: 0, renewals: 0 };
 
-  // Trial ends within 3 days.
+  // Trial ends within the next 24 hours (the trial is 3 days). Includes a summary of what we found.
   const { data: ending } = await db.from("brand_licenses").select("id, granted_to, organization_id, expires_at")
-    .eq("kind", "trial").eq("status", "active").gt("expires_at", iso(now)).lte("expires_at", iso(now + 3 * 864e5));
+    .eq("kind", "trial").eq("status", "active").gt("expires_at", iso(now)).lte("expires_at", iso(now + 864e5));
   for (const l of ending ?? []) {
     const person = l.granted_to ? await getPerson(db, l.granted_to) : null;
     if (!person) continue;
     const endsAt = new Date(l.expires_at!);
-    const daysLeft = Math.max(1, Math.ceil((endsAt.getTime() - now) / 864e5));
-    if (await emailOnce(db, person, "trial_ending", l.id, () => trialEnding({ firstName: person.firstName, daysLeft, endsAt }), { respectPreference: true })) {
+    const hoursLeft = Math.max(0, (endsAt.getTime() - now) / 36e5);
+    const summary = await trialSummary(db, l.organization_id);
+    if (await emailOnce(db, person, "trial_ending", l.id, () => trialEnding({ firstName: person.firstName, endsAt, hoursLeft, summary }), { respectPreference: true })) {
       out.trialEnding++;
-      await notify(db, { userId: person.userId, orgId: l.organization_id, kind: "trial_ending", title: `Your free trial ends in ${daysLeft} day${daysLeft > 1 ? "s" : ""}`, href: "/pricing" });
+      await notify(db, { userId: person.userId, orgId: l.organization_id, kind: "trial_ending", title: hoursLeft <= 18 ? "Your free trial ends today" : "Your free trial ends tomorrow", href: "/pricing" });
     }
   }
 
@@ -56,5 +57,16 @@ export async function GET(req: Request) {
       }
     }
   }
+  await db.from("auth_links").delete().lt("expires_at", iso(now - 864e5)); // tidy expired one-time links
   return Response.json({ ok: true, ...out });
+}
+
+/** The latest result for the organisation's first brand, for the trial-ending email. */
+async function trialSummary(db: ReturnType<typeof supabaseAdmin>, orgId: string): Promise<TrialSummary | undefined> {
+  const { data: b } = await db.from("brands").select("id, brand_name, domain").eq("organization_id", orgId).order("created_at").limit(1).maybeSingle();
+  if (!b) return undefined;
+  const { data: scan } = await db.from("brand_scans").select("score").eq("brand_id", b.id).not("score", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: issues } = await db.from("issues").select("severity").eq("brand_id", b.id).eq("status", "open");
+  const critical = (issues ?? []).filter((i) => i.severity === "critical").length;
+  return { brandName: b.brand_name, domain: b.domain, score: scan?.score ?? null, critical, warnings: (issues ?? []).length - critical };
 }

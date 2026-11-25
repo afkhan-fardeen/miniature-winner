@@ -2,6 +2,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import Link from "next/link";
 import { AppHeader } from "@/components/AppHeader";
 import { ScanResultView } from "@/components/ScanResultView";
+import { VerifyPanel } from "@/components/VerifyPanel";
 import type { Change } from "@/lib/monitor/findings";
 import type { ScanResult } from "@/lib/scan";
 import { runBrandScan } from "@/app/app/actions";
@@ -15,7 +16,7 @@ export function BrandWorkspaceView({
   email, orgId, brand, scan, history, error, ok, expand = false, open = [], resolved = [], changes = [], lastScan,
 }: {
   email?: string | null; orgId: string;
-  brand: { id: string; name: string; domain: string; verified: boolean };
+  brand: { id: string; name: string; domain: string; verified: boolean; token?: string };
   scan: ScanResult | null; history: HistoryPoint[];
   error?: string; ok?: string; expand?: boolean;
   open?: TrackedIssue[]; resolved?: TrackedIssue[]; changes?: Change[]; lastScan?: { at: string; source: "manual" | "scheduled" };
@@ -30,11 +31,11 @@ export function BrandWorkspaceView({
             <p className="eyebrow">Brand</p>
             <h1 className="mt-1 text-[32px] leading-9 tracking-[-0.02em]">{brand.name}</h1>
             <p className="mt-1 flex items-center gap-2 text-sm text-ink-2">{brand.domain} <span className={`chip ${brand.verified ? "chip-ok" : "chip-warn"}`}>{brand.verified ? "Verified" : "Not verified"}</span></p>
-            {lastScan && <p className="mt-1 text-xs text-ink-2">Checked automatically every day. Last scan {new Date(lastScan.at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC ({lastScan.source}).</p>}
+            {lastScan && <p className="mt-1 text-xs text-ink-2">{brand.verified ? "Checked automatically every day. " : "Preview scan only. Verify your domain to turn on daily monitoring. "}Last scan {new Date(lastScan.at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC ({lastScan.source}).</p>}
           </div>
           <form action={runBrandScan}>
             <input type="hidden" name="org" value={orgId} /><input type="hidden" name="brand" value={brand.id} />
-            <button className="btn btn-primary btn-lg" disabled={!brand.verified}><Play size={16} aria-hidden /> Run scan now</button>
+            <button className="btn btn-primary btn-lg" disabled={!brand.verified && !!scan}><Play size={16} aria-hidden /> Run scan now</button>
           </form>
         </div>
 
@@ -43,14 +44,18 @@ export function BrandWorkspaceView({
           {ok && <p role="status" className="alert-ok">{ok}</p>}
         </div>
 
+        {!brand.verified && brand.token && (
+          <div className="mt-6"><VerifyPanel orgId={orgId} brandId={brand.id} domain={brand.domain} token={brand.token} from="brand" /></div>
+        )}
+
         {!scan ? (
           <div className="card-surface mt-8 text-center">
             <h2 className="h3">No scans yet</h2>
-            <p className="mx-auto mt-2 max-w-md text-ink-2">Run your first scan to get a readiness score and a list of what to fix.</p>
+            <p className="mx-auto mt-2 max-w-md text-ink-2">Run your first scan to get a readiness score and a list of what to fix. It takes about ten seconds.</p>
           </div>
         ) : (
           <div className="mt-8 space-y-8">
-            <ScanResultView r={scan} showCta={false} expand={expand} />
+            <ScanResultView r={scan} expand={expand} />
 
             {changes.length > 0 && (
               <section aria-label="Changes since the previous scan">

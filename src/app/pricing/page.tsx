@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageShell } from "@/components/PageShell";
 import { PricingCalculator } from "@/components/PricingCalculator";
 import type { PriceMode } from "@/lib/pricing";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Pricing", description: "One platform, all your brands. Per-brand pricing with 1, 3, 6 and 12-month terms." };
 
@@ -18,7 +19,7 @@ export default function PricingPage() {
         </p>
         <div className="card-surface mt-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="h3">Try one brand free for 14 days</div>
+            <div className="h3">Try one brand free for {SITE.trialDays} days</div>
             <p className="text-sm text-ink-2">No card needed. Add a licence when you&apos;re ready to keep monitoring.</p>
           </div>
           <Link href="/signup" className="btn btn-accent btn-lg">Start free trial</Link>

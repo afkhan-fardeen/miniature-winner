@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, CheckCircle2, CircleDashed, Info, ShieldAlert, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleDashed, Info, ShieldAlert, XCircle } from "lucide-react";
 import Link from "next/link";
 import { bandFor, type Check, type ScanResult } from "@/lib/scan";
 
@@ -41,7 +41,7 @@ function Group({ title, items, open = false }: { title: string; items: Check[]; 
   );
 }
 
-export function ScanResultView({ r, expand = false, showCta = true }: { r: ScanResult; expand?: boolean; showCta?: boolean }) {
+export function ScanResultView({ r, expand = false }: { r: ScanResult; expand?: boolean }) {
   if (r.fatal) {
     return (
       <div className="card flex gap-4">
@@ -99,7 +99,7 @@ export function ScanResultView({ r, expand = false, showCta = true }: { r: ScanR
             ))}
           </ul>
           <p className="mt-5 text-xs text-ink-2">
-            Scanned {r.domain} on {when} UTC in {(r.durationMs / 1000).toFixed(1)}s, reading {r.pagesFetched.length} public pages. This is a technical readiness score, not an AI visibility or ranking score.
+            Scanned {r.domain} on {when} UTC in {(r.durationMs / 1000).toFixed(1)}s, reading {r.pagesFetched.length} public pages. This is a technical readiness score, not an AI visibility or ranking score. <Link href="/methodology" className="underline underline-offset-2">How it is calculated</Link>.
           </p>
         </div>
       </div>
@@ -119,17 +119,6 @@ export function ScanResultView({ r, expand = false, showCta = true }: { r: ScanR
         <Group title="Couldn't test" items={untested} open={expand} />
       </div>
 
-      {showCta && (
-      <section className="rounded-xl bg-ink p-8 text-paper sm:p-10">
-        <h2 className="h2 max-w-[560px]">This is one snapshot. Klyroo watches {r.domain} every day.</h2>
-        <p className="mt-3 max-w-[560px] text-[#c9c9c4]">
-          Monitoring checks robots.txt, sitemaps and structured data daily, alerts you the moment something breaks, and sends weekly and monthly reports.
-        </p>
-        <Link href={`/signup?site=${encodeURIComponent(r.domain)}`} className="btn btn-accent btn-lg mt-6">
-          Start free trial for {r.domain} <ArrowRight size={18} aria-hidden />
-        </Link>
-        </section>
-      )}
     </div>
   );
 }
