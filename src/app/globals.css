@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* Ramp Light design system, adapted for Klyroo. Flat: borders and tone, no shadows. */
+@theme inline {
+  --color-ink: #0c0a08;
+  --color-ink-2: #6b6b6b;
+  --color-acid: #e4f222;
+  --color-paper: #ffffff;
+  --color-surface: #f6f6f4;
+  --color-muted: #f3f3ef;
+  --color-line: #e5e7eb;
+  --color-danger: #d92d20;
+  --color-ok: #1a7f4b;
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --text-display: 64px;
+  --text-display--line-height: 64px;
+  --text-display--letter-spacing: -0.01em;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+::selection { background: var(--color-acid); color: var(--color-ink); }
+
+@layer components {
+  .container-x { @apply mx-auto w-full max-w-[1120px] px-5 sm:px-8; }
+  .section { @apply py-16 sm:py-24; }
+
+  .display { font-size: clamp(38px, 7vw, 64px); line-height: 1.02; letter-spacing: -0.02em; font-weight: 400; }
+  .h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.1; letter-spacing: -0.015em; font-weight: 400; }
+  .h3 { font-size: 20px; line-height: 26px; letter-spacing: -0.005em; font-weight: 400; }
+  .lead { font-size: 18px; line-height: 28px; color: var(--color-ink-2); }
+  .eyebrow { @apply text-xs uppercase text-ink-2; letter-spacing: 0.08em; }
+
+  /* Buttons: compact, 34px, 6px radius */
+  .btn { @apply inline-flex h-[34px] items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-lg { @apply h-12 px-5 text-base; }
+  .btn-xl { @apply h-14 px-7 text-base; }
+  .btn-primary { @apply bg-ink text-paper hover:bg-[#2a2723]; }
+  .btn-accent { @apply bg-acid text-ink hover:bg-[#d4e11a]; }
+  .btn-outline { @apply border border-line bg-paper text-ink hover:border-ink; }
+  .btn-ghost { @apply px-0 text-ink hover:underline underline-offset-4; }
+
+  .input { @apply h-12 w-full rounded-md border border-line bg-paper px-4 text-base text-ink placeholder:text-ink-2 hover:border-ink-2 focus:border-ink focus:outline-none; }
+  .input-xl { @apply h-14 text-base; }
+  .label { @apply mb-1.5 block text-sm text-ink; }
+
+  .card { @apply rounded-xl border border-line bg-paper p-5; }
+  .card-surface { @apply rounded-xl border border-line bg-surface p-5; }
+  .chip { @apply inline-flex items-center rounded-full bg-muted px-2 py-1 text-xs text-ink; letter-spacing: 0.02em; }
+  .chip-acid { @apply bg-acid; }
+  .chip-ok { @apply bg-[#e3f4ea] text-ok; }
+  .chip-warn { @apply bg-[#fdf3d7] text-[#8a5a00]; }
+  .chip-crit { @apply bg-[#fde7e4] text-danger; }
+  .stat-pill { @apply inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px]; letter-spacing: 0.04em; }
+  .alert-error { @apply rounded-md border border-[#f5c2bd] bg-[#fde7e4] px-4 py-3 text-sm text-danger; }
+  .alert-ok { @apply rounded-md border border-[#bfe3cd] bg-[#e3f4ea] px-4 py-3 text-sm text-ok; }
+}
