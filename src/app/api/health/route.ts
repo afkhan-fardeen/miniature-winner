@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
- * Deployment self-check. Protected by CRON_SECRET (Authorization: Bearer ...).
+ * Deployment self-check. Protected by CRON_SECRET or the service-role key (Authorization: Bearer ...).
  * Reports only whether settings are present, never their values.
  */
 const REQUIRED = [
@@ -12,8 +12,9 @@ const REQUIRED = [
 ];
 
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
+  const given = req.headers.get("authorization");
+  const allowed = [process.env.CRON_SECRET, process.env.SUPABASE_SERVICE_ROLE_KEY].filter((x): x is string => !!x);
+  if (!given || !allowed.some((k) => given === `Bearer ${k}`)) return new Response("unauthorized", { status: 401 });
   const missing = REQUIRED.filter((k) => !process.env[k]);
   let db = false;
   try { db = !(await supabaseAdmin().from("organizations").select("id").limit(1)).error; } catch { /* reported below */ }
