@@ -40,10 +40,12 @@ export async function saveProfile(formData: FormData) {
 
 export async function saveNotifications(formData: FormData) {
   const { supabase, user } = await currentUser();
-  const on = formData.get("emailNotifications") === "on";
-  const { error } = await supabase.from("profiles").update({ email_notifications: on }).eq("user_id", user.id);
+  const { error } = await supabase.from("profiles").update({
+    email_notifications: formData.get("emailNotifications") === "on",
+    alert_emails: formData.get("alertEmails") === "on",
+  }).eq("user_id", user.id);
   if (error) back("error", "We couldn't save that. Please try again.");
-  back("ok", on ? "Reminder emails are on." : "Reminder emails are off. You'll still get security and billing emails.");
+  back("ok", "Your email preferences have been saved.");
 }
 
 export async function changePassword(formData: FormData) {

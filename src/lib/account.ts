@@ -6,13 +6,13 @@ import { appUrl } from "@/lib/app-url";
 /** Server-only helpers. Every function here expects the service-role client. */
 type Admin = SupabaseClient;
 
-export interface Person { userId: string; email: string; firstName: string; emailNotifications: boolean }
+export interface Person { userId: string; email: string; firstName: string; emailNotifications: boolean; alertEmails: boolean }
 
 export async function getPerson(admin: Admin, userId: string): Promise<Person | null> {
   const { data: u } = await admin.auth.admin.getUserById(userId);
   if (!u?.user?.email) return null;
-  const { data: p } = await admin.from("profiles").select("first_name, email_notifications").eq("user_id", userId).maybeSingle();
-  return { userId, email: u.user.email, firstName: p?.first_name ?? u.user.email.split("@")[0], emailNotifications: p?.email_notifications ?? true };
+  const { data: p } = await admin.from("profiles").select("first_name, email_notifications, alert_emails").eq("user_id", userId).maybeSingle();
+  return { userId, email: u.user.email, firstName: p?.first_name ?? u.user.email.split("@")[0], emailNotifications: p?.email_notifications ?? true, alertEmails: p?.alert_emails ?? true };
 }
 
 /** Owners and admins of an organisation. */
@@ -38,7 +38,7 @@ export async function emailOnce(admin: Admin, person: Person, kind: string, ref:
   const { error } = await admin.from("email_events").insert({ user_id: person.userId, kind, ref });
   if (error) return false; // unique violation: already sent
   const r = render();
-  const email: Email = { to: person.email, subject: r.subject, html: r.html, text: r.text, idempotencyKey: `${kind}:${person.userId}:${ref}`.slice(0, 250), tags: [{ name: "kind", value: kind }] };
+  const email: Email = { to: person.email, subject: r.subject, html: r.html, text: r.text, attachments: r.attachments, idempotencyKey: `${kind}:${person.userId}:${ref}`.slice(0, 250), tags: [{ name: "kind", value: kind }] };
   const res = await sendEmail(email);
   if (!res.ok) await admin.from("email_events").delete().eq("user_id", person.userId).eq("kind", kind).eq("ref", ref);
   return res.ok;

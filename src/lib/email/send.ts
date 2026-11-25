@@ -3,6 +3,7 @@ export interface Email {
   subject: string;
   html: string;
   text: string;
+  attachments?: { filename: string; content: string }[]; // base64 content
   /** Resend de-duplicates sends that share a key for 24h. */
   idempotencyKey?: string;
   tags?: { name: string; value: string }[];
@@ -28,7 +29,7 @@ export async function sendEmail(e: Email): Promise<SendResult> {
         "Content-Type": "application/json",
         ...(e.idempotencyKey ? { "Idempotency-Key": e.idempotencyKey } : {}),
       },
-      body: JSON.stringify({ from: FROM(), to: [e.to], reply_to: REPLY_TO(), subject: e.subject, html: e.html, text: e.text, tags: e.tags }),
+      body: JSON.stringify({ from: FROM(), to: [e.to], reply_to: REPLY_TO(), subject: e.subject, html: e.html, text: e.text, tags: e.tags, attachments: e.attachments }),
       signal: AbortSignal.timeout(10_000),
     });
     const body = (await res.json().catch(() => ({}))) as { id?: string; message?: string };

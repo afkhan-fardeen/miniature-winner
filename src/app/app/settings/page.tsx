@@ -46,8 +46,12 @@ async function Content({ searchParams }: { searchParams: PageProps<"/app/setting
           <h2 id="notifs" className="h3">Email notifications</h2>
           <form action={saveNotifications} className="mt-5 space-y-4">
             <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" name="alertEmails" defaultChecked={profile?.alert_emails ?? true} className="mt-1 size-4 accent-ink" />
+              <span>Critical alerts<br /><span className="text-ink-2">An email when we confirm a new critical issue on one of your brands. In-app alerts are always on.</span></span>
+            </label>
+            <label className="flex items-start gap-3 text-sm">
               <input type="checkbox" name="emailNotifications" defaultChecked={profile?.email_notifications ?? true} className="mt-1 size-4 accent-ink" />
-              <span>Reminder emails<br /><span className="text-ink-2">Trial ending and similar nudges. Security, billing and renewal emails are always sent.</span></span>
+              <span>Reports and reminders<br /><span className="text-ink-2">Weekly and monthly reports, and trial reminders. Security, billing and renewal emails are always sent.</span></span>
             </label>
             <button className="btn btn-outline btn-lg">Save</button>
           </form>

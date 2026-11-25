@@ -6,7 +6,7 @@ import { addBrand, removeBrand, verifyBrand } from "@/app/app/actions";
 
 export interface DashBrand {
   id: string; brand_name: string; website_url: string; domain: string;
-  verification_status: string; verification_token: string; score?: number | null;
+  verification_status: string; verification_token: string; score?: number | null; criticals?: number;
 }
 export interface DashSub { id: string; quantity: number; duration_months: number; status: string; expiry_date: string | null; renewal_status: string }
 export interface OrgDashboardProps {
@@ -97,6 +97,7 @@ export function OrgDashboard({ email, active, brands, total, used, free, subs, e
                         <div className="truncate text-sm text-ink-2">{b.website_url}</div>
                       </div>
                       <div className="flex items-center gap-4">
+                        {!!b.criticals && <span className="chip chip-crit">{b.criticals} critical</span>}
                         {typeof b.score === "number" && <span className="chip tabular-nums">Score {b.score}</span>}
                         <span className={`chip ${b.verification_status === "verified" ? "chip-ok" : "chip-warn"}`}>
                           {b.verification_status === "verified" ? "Verified" : "Not verified"}

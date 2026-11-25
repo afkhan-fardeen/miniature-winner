@@ -4,7 +4,7 @@ import { formatGBP } from "@/lib/pricing";
 /* Brand tokens (match the site). Email clients need inline styles and tables. */
 const INK = "#0C0A08", MUTED = "#6B6B6B", ACID = "#E4F222", LINE = "#E5E7EB", SURFACE = "#F6F6F4";
 
-export interface Rendered { subject: string; html: string; text: string }
+export interface Rendered { subject: string; html: string; text: string; attachments?: { filename: string; content: string }[] }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
@@ -177,5 +177,83 @@ export function refundProcessed(a: { firstName: string }): Rendered {
       footerNote: "This is a billing notice, so you'll always receive it.",
     }),
     text: `Hi ${a.firstName}, your refund has been issued and the licences from that purchase have ended. It can take a few days to appear on your statement.`,
+  };
+}
+
+/* ---------------------------------------------------------------- alerts */
+
+export interface AlertIssue { title: string; severity: "critical" | "warning"; url: string; detail: string; previous: string; recommendation?: string }
+
+export function issueAlert(a: { firstName: string; brandName: string; domain: string; issues: AlertIssue[]; detectedAt: Date; brandId: string }): Rendered {
+  const link = `${appUrl()}/app/brands/${a.brandId}`;
+  const n = a.issues.length;
+  const subject = n === 1 ? `Critical: ${a.issues[0].title} on ${a.domain}` : `${n} critical issues on ${a.domain}`;
+  const card = (i: AlertIssue) =>
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;border:1px solid ${LINE};border-radius:8px"><tr><td style="padding:16px">` +
+    `<span style="display:inline-block;padding:3px 8px;border-radius:999px;background:#fde7e4;color:#d92d20;font-size:12px">Critical</span>` +
+    `<div style="margin:10px 0 4px;font-size:18px">${esc(i.title)}</div>` +
+    `<div style="font-size:14px;color:${MUTED}">${esc(i.detail)}</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;font-size:14px">` +
+    `<tr><td style="padding:3px 0;color:${MUTED};width:110px">Affected URL</td><td style="padding:3px 0;word-break:break-all">${esc(i.url || a.domain)}</td></tr>` +
+    `<tr><td style="padding:3px 0;color:${MUTED}">Detected</td><td style="padding:3px 0">${fmtDate(a.detectedAt)}</td></tr>` +
+    `<tr><td style="padding:3px 0;color:${MUTED}">Before</td><td style="padding:3px 0">${esc(i.previous)}</td></tr>` +
+    `<tr><td style="padding:3px 0;color:${MUTED}">Now</td><td style="padding:3px 0">${esc(i.detail)}</td></tr>` +
+    (i.recommendation ? `<tr><td style="padding:3px 0;color:${MUTED}">What to do</td><td style="padding:3px 0">${esc(i.recommendation)}</td></tr>` : "") +
+    `</table></td></tr></table>`;
+  const textIssue = (i: AlertIssue) => `CRITICAL: ${i.title}
+Affected URL: ${i.url || a.domain}
+Detected: ${fmtDate(a.detectedAt)}
+Before: ${i.previous}
+Now: ${i.detail}${i.recommendation ? `
+What to do: ${i.recommendation}` : ""}`;
+  return {
+    subject,
+    html: layout({
+      preheader: n === 1 ? a.issues[0].detail : `${n} new critical issues were found on ${a.brandName}.`,
+      title: n === 1 ? "A critical issue was found" : `${n} critical issues were found`,
+      bodyHtml: p(`Hi ${esc(a.firstName)}, Klyroo's latest scan of <strong>${esc(a.brandName)}</strong> (${esc(a.domain)}) found ${n === 1 ? "a new critical issue" : "new critical issues"}.`) + a.issues.map(card).join("") + button(link, "View in Klyroo") + muted("We confirmed each issue with a second check before alerting you. You can turn critical alert emails off in your settings."),
+    }),
+    text: `Hi ${a.firstName}, Klyroo's latest scan of ${a.brandName} (${a.domain}) found ${n === 1 ? "a new critical issue" : "new critical issues"}.\n\n${a.issues.map(textIssue).join("\n\n")}\n\nView in Klyroo: ${link}`,
+  };
+}
+
+/* --------------------------------------------------------------- reports */
+
+import type { ReportData } from "@/lib/reports/data";
+
+const sev = (s: "critical" | "warning") => `<span style="color:${s === "critical" ? "#d92d20" : "#8a5a00"}">${s === "critical" ? "Critical" : "Warning"}</span>`;
+
+function reportBlock(r: ReportData) {
+  const url = `${appUrl()}/app/brands/${r.brand.id}`;
+  const d = r.score.delta;
+  const delta = d === null ? "" : d === 0 ? "no change" : `${d > 0 ? "▲" : "▼"} ${Math.abs(d)} vs the start of the period`;
+  const cats = r.categories.map((c) => `<tr><td style="padding:3px 0;font-size:14px">${esc(c.label)}</td><td align="right" style="padding:3px 0;font-size:14px;color:${c.score === null ? MUTED : INK}">${c.score === null ? "Not tested" : c.score}</td></tr>`).join("");
+  const list = (title: string, items: ReportData["newIssues"], n = 4) =>
+    items.length ? `<p style="margin:14px 0 6px;font-size:14px;color:${MUTED}">${title} (${items.length})</p>${items.slice(0, n).map((i) => `<div style="font-size:14px;margin:0 0 4px">${sev(i.severity)} · ${esc(i.title)}</div>`).join("")}${items.length > n ? `<div style="font-size:13px;color:${MUTED}">and ${items.length - n} more</div>` : ""}` : "";
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid ${LINE};border-radius:8px"><tr><td style="padding:18px">` +
+    `<div style="font-size:18px"><a href="${url}" style="color:${INK};text-decoration:none">${esc(r.brand.name)}</a> <span style="font-size:13px;color:${MUTED}">${esc(r.brand.domain)}</span></div>` +
+    (r.score.end === null ? `<p style="margin:10px 0;font-size:14px;color:${MUTED}">No completed scans in this period.</p>` :
+      `<div style="margin:10px 0 2px;font-size:34px;letter-spacing:-0.02em">${r.score.end}<span style="font-size:14px;color:${MUTED}"> / 100</span></div><div style="font-size:13px;color:${MUTED}">${delta}${r.coverage !== null && r.coverage < 100 ? ` · based on ${r.coverage}% of checks` : ""}</div>` +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;border-top:1px solid ${LINE}">${cats}</table>`) +
+    `<p style="margin:12px 0 0;font-size:14px"><strong>${r.newIssues.length}</strong> new · <strong>${r.resolved.length}</strong> resolved · <strong>${r.outstanding.length}</strong> outstanding</p>` +
+    list("New issues", r.newIssues) + list("Resolved", r.resolved, 3) +
+    (r.priorities.length ? `<p style="margin:14px 0 6px;font-size:14px;color:${MUTED}">Recommended actions</p><ol style="margin:0;padding-left:18px;font-size:14px">${r.priorities.slice(0, 3).map((x) => `<li style="margin-bottom:3px">${esc(x)}</li>`).join("")}</ol>` : "") +
+    (r.untested.length ? `<p style="margin:12px 0 0;font-size:12px;color:${MUTED}">Not tested (not counted as passed): ${esc(r.untested.join(", "))}</p>` : "") +
+    `</td></tr></table>`;
+}
+
+export function periodicReport(a: { firstName: string; kind: "weekly" | "monthly"; orgName: string; start: string; end: string; reports: ReportData[] }): Rendered {
+  const label = a.kind === "weekly" ? "weekly" : "monthly";
+  const range = `${fmtDate(a.start)} to ${fmtDate(a.end)}`;
+  const link = `${appUrl()}/app/reports`;
+  return {
+    subject: `Your ${label} Klyroo report: ${range}`,
+    html: layout({
+      preheader: `${a.reports.length} brand${a.reports.length > 1 ? "s" : ""}, ${range}.`,
+      title: `Your ${label} report`,
+      bodyHtml: p(`Hi ${esc(a.firstName)}, here's how ${a.reports.length > 1 ? "your brands" : "your brand"} did from <strong>${range}</strong>.`) + a.reports.map(reportBlock).join("") +
+        button(link, "Open full reports") + muted(a.kind === "monthly" ? "A PDF of each brand's report is attached." : "This is a technical readiness report. It is not an AI visibility or ranking score.") ,
+    }),
+    text: `Hi ${a.firstName}, your ${label} Klyroo report (${range}).\n\n` + a.reports.map((r) => `${r.brand.name} (${r.brand.domain}): ${r.score.end === null ? "no completed scans" : `${r.score.end}/100${r.score.delta ? ` (${r.score.delta > 0 ? "+" : ""}${r.score.delta})` : ""}`}; ${r.newIssues.length} new, ${r.resolved.length} resolved, ${r.outstanding.length} outstanding.`).join("\n") + `\n\nOpen full reports: ${link}`,
   };
 }

@@ -1,21 +1,41 @@
-name: Daily reminders
+name: Scheduled jobs
 
-# Sends trial-ending, trial-ended and renewal reminder emails (each once).
+# hourly: scan the next batch of brands that are due, update issues, send critical alerts
+# 08:00 UTC: trial and renewal reminders, plus the weekly (Mondays) and monthly (1st) reports
 # Needs a repository secret named CRON_SECRET with the same value as in Vercel.
 on:
   schedule:
+    - cron: "0 * * * *"
     - cron: "0 8 * * *"
   workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run"
+        type: choice
+        options: [scans, daily]
+        default: scans
 
 jobs:
-  run:
+  scans:
+    if: github.event_name == 'workflow_dispatch' && inputs.job == 'scans' || github.event.schedule == '0 * * * *'
     runs-on: ubuntu-latest
     steps:
-      - name: Call the daily job
+      - name: Scan due brands
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           test -n "$CRON_SECRET" || { echo "CRON_SECRET repository secret is not set"; exit 1; }
-          curl --fail --silent --show-error --max-time 120 \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            https://useklyroo.com/api/cron/daily
+          curl --fail --silent --show-error --max-time 120 -H "Authorization: Bearer $CRON_SECRET" https://useklyroo.com/api/cron/scans
+
+  daily:
+    if: github.event_name == 'workflow_dispatch' && inputs.job == 'daily' || github.event.schedule == '0 8 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reminders and reports
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET" || { echo "CRON_SECRET repository secret is not set"; exit 1; }
+          curl --fail --silent --show-error --max-time 120 -H "Authorization: Bearer $CRON_SECRET" https://useklyroo.com/api/cron/daily
+          echo
+          curl --fail --silent --show-error --max-time 120 -H "Authorization: Bearer $CRON_SECRET" https://useklyroo.com/api/cron/reports

@@ -26,14 +26,17 @@ async function Content({ searchParams }: { searchParams: PageProps<"/app">["sear
   }
   const active = orgs?.find((o) => o.id === one(sp.org)) ?? orgs?.[0];
 
-  const [brands, licences, subs, scans] = active
+  const [brands, licences, subs, scans, openCriticals] = active
     ? await Promise.all([
         supabase.from("brands").select("*").eq("organization_id", active.id).order("created_at"),
         supabase.from("brand_licenses").select("id, brand_id, status, kind, expires_at").eq("organization_id", active.id).eq("status", "active"),
         supabase.from("subscriptions").select("*").eq("organization_id", active.id).order("created_at", { ascending: false }),
         supabase.from("brand_scans").select("brand_id, score, created_at").eq("organization_id", active.id).order("created_at", { ascending: false }).limit(200),
+        supabase.from("issues").select("brand_id").eq("organization_id", active.id).eq("status", "open").eq("severity", "critical"),
       ])
-    : [null, null, null, null];
+    : [null, null, null, null, null];
+  const criticals = new Map<string, number>();
+  for (const i of openCriticals?.data ?? []) criticals.set(i.brand_id, (criticals.get(i.brand_id) ?? 0) + 1);
 
   const latest = new Map<string, number | null>();
   for (const s of scans?.data ?? []) if (!latest.has(s.brand_id)) latest.set(s.brand_id, s.score);
@@ -44,7 +47,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/app">["sear
   return (
     <OrgDashboard
       email={auth.user.email} orgs={orgs ?? []} active={active}
-      brands={(brands?.data ?? []).map((b) => ({ ...b, score: latest.get(b.id) ?? null }))}
+      brands={(brands?.data ?? []).map((b) => ({ ...b, score: latest.get(b.id) ?? null, criticals: criticals.get(b.id) ?? 0 }))}
       total={valid.length} used={used} free={valid.length - used} subs={subs?.data ?? []}
       trial={trial} hasScan={(scans?.data ?? []).length > 0}
       error={one(sp.error)} ok={one(sp.ok) ?? welcome} prefillSite={one(sp.site)?.slice(0, 253) ?? ""}

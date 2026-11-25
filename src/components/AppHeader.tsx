@@ -28,6 +28,7 @@ export function AppHeader({ email }: { email?: string | null }) {
       <div className="container-x flex h-16 items-center justify-between">
         <Logo href="/app" />
         <div className="flex items-center gap-1 text-sm sm:gap-2">
+          <Link href="/app/reports" className="mr-1 hidden px-2 text-ink-2 hover:text-ink sm:inline">Reports</Link>
           <Link href="/pricing" className="mr-2 hidden text-ink-2 hover:text-ink sm:inline">Add licences</Link>
           <Link href="/app/notifications" aria-label="Notifications" className={icon}>
             <Bell size={20} aria-hidden />

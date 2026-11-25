@@ -108,7 +108,7 @@ export async function runBrandScan(formData: FormData) {
   const orgId = z.string().uuid().parse(formData.get("org"));
   const brandId = z.string().uuid().parse(formData.get("brand"));
   const { supabase } = await requireAdmin(orgId);
-  const { data: brand } = await supabase.from("brands").select("id, website_url, domain, verification_status")
+  const { data: brand } = await supabase.from("brands").select("id, brand_name, website_url, domain, verification_status")
     .eq("id", brandId).eq("organization_id", orgId).maybeSingle();
   const to = (key: "error" | "ok", msg: string): never => redirect(`/app/brands/${brandId}?org=${orgId}&${key}=${encodeURIComponent(msg)}`);
   if (!brand) back(orgId, "error", "Brand not found.");
@@ -123,16 +123,9 @@ export async function runBrandScan(formData: FormData) {
   const { data: licensed } = await supabaseAdmin().rpc("brand_has_valid_licence", { brand: brandId });
   if (!licensed) to("error", "This brand has no active licence. Add a licence to run scans.");
 
-  const { runScan } = await import("@/lib/scan");
-  const result = await runScan(brand!.website_url, brand!.domain);
-  if (result.fatal) to("error", result.fatal);
-
-  const admin = supabaseAdmin();
-  await admin.from("brand_scans").insert({
-    brand_id: brandId, organization_id: orgId, score: result.score, coverage: result.coverage, result,
-  });
-  // Keep 90 days of detail.
-  await admin.from("brand_scans").delete().eq("brand_id", brandId).lt("created_at", new Date(Date.now() - 90 * 864e5).toISOString());
+  const { recordScan } = await import("@/lib/monitor/process");
+  const out = await recordScan(supabaseAdmin(), { id: brandId, organization_id: orgId, brand_name: brand!.brand_name, website_url: brand!.website_url, domain: brand!.domain }, "manual");
+  if (out.result.fatal) to("error", out.result.fatal);
   revalidatePath(`/app/brands/${brandId}`);
   to("ok", "Scan complete.");
 }

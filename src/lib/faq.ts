@@ -2,6 +2,10 @@ import { SITE } from "./site";
 
 export const FAQ = [
   {
+    q: "How often is my site scanned, and when do I hear about problems?",
+    a: "Every verified brand is scanned automatically about once a day, and you can run a scan yourself any time. If a scan finds a new critical issue, we scan again to confirm it before emailing you, so one-off blips don't raise false alarms. You also get a weekly report on Mondays and a monthly report with a PDF on the 1st.",
+  },
+  {
     q: "How does the free trial work?",
     a: "Every account gets one brand free for 14 days, with no card needed. When the trial ends, monitoring pauses and your brand and reports stay in your account. Add a licence and monitoring resumes straight away.",
   },

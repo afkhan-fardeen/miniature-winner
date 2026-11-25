@@ -28,7 +28,7 @@ const checks = [
 const steps = [
   { Icon: Globe, t: "Add your store", d: "Enter your website and prove ownership with a DNS TXT record. No store admin access needed." },
   { Icon: ScanSearch, t: "We baseline it", d: "Klyroo crawls your site, finds your products and records how it looks today." },
-  { Icon: BellRing, t: "Alerts and reports", d: "Critical issues reach you straight away. Weekly and monthly reports show your score and what to fix." },
+  { Icon: BellRing, t: "Alerts and reports", d: "Every brand is scanned automatically each day. Critical issues are emailed once confirmed, and weekly and monthly reports show your score and what to fix." },
 ];
 
 const features = [
@@ -153,7 +153,7 @@ export default function Home() {
           </p>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {[
-              { Icon: Zap, t: "Instant critical alerts", d: "Site down, crawlers blocked, product pages failing. Sent by email the moment we detect them." },
+              { Icon: Zap, t: "Critical alerts", d: "Site down, crawlers blocked, product data broken. Emailed as soon as a scan finds it and a second check confirms it." },
               { Icon: CalendarCheck, t: "Weekly report", d: "Your score, new and resolved issues, and what to fix first, in your inbox every week." },
               { Icon: FileBarChart, t: "Monthly PDF", d: "Score history, coverage and the most affected pages. Easy to forward to your team or client." },
             ].map(({ Icon, t, d }) => (

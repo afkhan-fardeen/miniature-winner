@@ -124,6 +124,22 @@ try {
   check("other user cannot read notifications", notes.data?.length === 0);
   const forgedNote = await a.from("notifications").insert({ user_id: me, kind: "t", title: "forged" });
   check("client cannot insert notifications", !!forgedNote.error);
+
+  // ---- Issues, alerts, reports: readable by members only, writable by the server only
+  const bid = t1.data.id;
+  const { data: iss } = await admin.from("issues").insert({ brand_id: bid, organization_id: orgB, check_id: "sitemap", category: "technical", title: "XML sitemap", severity: "critical", url: "" }).select("id").single();
+  await admin.from("alerts").insert({ organization_id: orgB, brand_id: bid, issue_id: iss.id, severity: "critical", notification_status: "sent" });
+  await admin.from("reports").insert({ organization_id: orgB, brand_id: bid, kind: "weekly", period_start: "2026-11-16", period_end: "2026-11-22", data: {} });
+  for (const table of ["issues", "alerts", "reports"]) {
+    const mine = await b.from(table).select("id");
+    const theirs = await a.from(table).select("id").eq("organization_id", orgB);
+    check(`member can read ${table}`, (mine.data?.length ?? 0) === 1, JSON.stringify(mine.error));
+    check(`other tenant cannot read ${table}`, theirs.data?.length === 0);
+  }
+  const forgedIssue = await b.from("issues").insert({ brand_id: bid, organization_id: orgB, check_id: "x", category: "technical", title: "x", severity: "warning" });
+  check("client cannot insert issues", !!forgedIssue.error);
+  const dupIssue = await admin.from("issues").insert({ brand_id: bid, organization_id: orgB, check_id: "sitemap", category: "technical", title: "dup", severity: "critical", url: "" });
+  check("one issue row per brand, check and url", !!dupIssue.error);
 } catch (e) {
   console.log("ERROR", e.message ?? e); fails++;
 } finally {
